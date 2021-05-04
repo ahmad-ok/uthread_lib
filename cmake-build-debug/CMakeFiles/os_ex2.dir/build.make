@@ -77,27 +77,27 @@ include CMakeFiles/os_ex2.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/os_ex2.dir/flags.make
 
-CMakeFiles/os_ex2.dir/library.cpp.o: CMakeFiles/os_ex2.dir/flags.make
-CMakeFiles/os_ex2.dir/library.cpp.o: ../library.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/os_ex2.dir/library.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/os_ex2.dir/library.cpp.o -c /cs/usr/ahmadok/CLionProjects/os_ex2/library.cpp
+CMakeFiles/os_ex2.dir/uthreads.cpp.o: CMakeFiles/os_ex2.dir/flags.make
+CMakeFiles/os_ex2.dir/uthreads.cpp.o: ../uthreads.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/os_ex2.dir/uthreads.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/os_ex2.dir/uthreads.cpp.o -c /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp
 
-CMakeFiles/os_ex2.dir/library.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/os_ex2.dir/library.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /cs/usr/ahmadok/CLionProjects/os_ex2/library.cpp > CMakeFiles/os_ex2.dir/library.cpp.i
+CMakeFiles/os_ex2.dir/uthreads.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/os_ex2.dir/uthreads.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp > CMakeFiles/os_ex2.dir/uthreads.cpp.i
 
-CMakeFiles/os_ex2.dir/library.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/os_ex2.dir/library.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /cs/usr/ahmadok/CLionProjects/os_ex2/library.cpp -o CMakeFiles/os_ex2.dir/library.cpp.s
+CMakeFiles/os_ex2.dir/uthreads.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/os_ex2.dir/uthreads.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp -o CMakeFiles/os_ex2.dir/uthreads.cpp.s
 
 # Object files for target os_ex2
 os_ex2_OBJECTS = \
-"CMakeFiles/os_ex2.dir/library.cpp.o"
+"CMakeFiles/os_ex2.dir/uthreads.cpp.o"
 
 # External object files for target os_ex2
 os_ex2_EXTERNAL_OBJECTS =
 
-libos_ex2.a: CMakeFiles/os_ex2.dir/library.cpp.o
+libos_ex2.a: CMakeFiles/os_ex2.dir/uthreads.cpp.o
 libos_ex2.a: CMakeFiles/os_ex2.dir/build.make
 libos_ex2.a: CMakeFiles/os_ex2.dir/link.txt
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libos_ex2.a"

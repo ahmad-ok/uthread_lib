@@ -143,32 +143,32 @@ os_ex2/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/build
 .PHONY : os_ex2/fast
 
-library.o: library.cpp.o
+uthreads.o: uthreads.cpp.o
 
-.PHONY : library.o
+.PHONY : uthreads.o
 
 # target to build an object file
-library.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.o
-.PHONY : library.cpp.o
+uthreads.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.o
+.PHONY : uthreads.cpp.o
 
-library.i: library.cpp.i
+uthreads.i: uthreads.cpp.i
 
-.PHONY : library.i
+.PHONY : uthreads.i
 
 # target to preprocess a source file
-library.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.i
-.PHONY : library.cpp.i
+uthreads.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.i
+.PHONY : uthreads.cpp.i
 
-library.s: library.cpp.s
+uthreads.s: uthreads.cpp.s
 
-.PHONY : library.s
+.PHONY : uthreads.s
 
 # target to generate assembly for a file
-library.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.s
-.PHONY : library.cpp.s
+uthreads.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.s
+.PHONY : uthreads.cpp.s
 
 # Help Target
 help:
@@ -179,9 +179,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... os_ex2"
-	@echo "... library.o"
-	@echo "... library.i"
-	@echo "... library.s"
+	@echo "... uthreads.o"
+	@echo "... uthreads.i"
+	@echo "... uthreads.s"
 .PHONY : help
 
 

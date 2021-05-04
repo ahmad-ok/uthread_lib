@@ -1,4 +1,6 @@
 #include "uthreads.h"
+#include <iostream>
+#include "stdlib.h"
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/time.h>
@@ -8,7 +10,7 @@ using std::queue;
 typedef unsigned long address_t;
 typedef void (*func)();
 
-
+#define THREAD_ALLOCATION_FAIL_MSG "system error: Thread Allocation Failed"
 #define JB_SP 6
 #define JB_PC 7
 
@@ -30,7 +32,7 @@ private:
 public:
     Thread(unsigned int id, func f)
     {
-        char[STACK_SIZE] stack;
+        char stack[STACK_SIZE];
         this->id = id;
         address_t sp = (address_t)stack + STACK_SIZE - sizeof(address_t );
         address_t pc = (address_t)f;
@@ -46,3 +48,93 @@ public:
 };
 
 
+int numThreads = 0;
+Thread *currentThread;
+bool used_ids[MAX_THREAD_NUM] = {false};
+queue<Thread*> threads_queue;
+sigset_t set;
+
+void do_nothing()
+{
+    for(;;){}
+}
+int uthread_init(int quantum_usecs)
+{
+    if(quantum_usecs <= 0)
+    {
+        return -1;
+    }
+    Thread* mainThread = new Thread(0, do_nothing);
+    threads_queue.push(mainThread);
+    used_ids[0] = true;
+    numThreads += 1;
+    currentThread = mainThread; // todo ?
+    sigaddset(&set, SIGALRM);
+    return 0;
+}
+
+/**
+ * find minimum thread id that has not been used
+ * @return id of thread
+ */
+int get_min()
+{
+    for (int i = 0; i < MAX_THREAD_NUM; ++i)
+    {
+        if (used_ids[i])
+        {
+            return i;
+        }
+    }
+    return MAX_THREAD_NUM;
+}
+
+void block_signals()
+{
+    sigprocmask(SIG_BLOCK, &set, nullptr);
+}
+
+void unblock_signals()
+{
+    sigprocmask(SIG_UNBLOCK,&set, nullptr);
+}
+/**
+ * Free all threads spawned, call when failure or finished executing
+ */
+void free_all()
+{
+    block_signals();
+    Thread* current;
+    while(!threads_queue.empty())
+    {
+        current = threads_queue.front();
+        threads_queue.pop();
+        delete current;
+    }
+
+    unblock_signals();
+
+}
+int uthread_spawn(void (*f)(void))
+{
+    block_signals();
+    if(numThreads >= MAX_THREAD_NUM)
+    {
+        unblock_signals();
+        return -1;
+    }
+    try
+    {
+        Thread* th = new Thread(get_min(), f);
+        threads_queue.push(th);
+        ++numThreads;
+    } catch (std::bad_alloc&)
+    {
+        std::cerr << THREAD_ALLOCATION_FAIL_MSG << std::endl;
+        free_all();
+        exit(1);
+    }
+
+    unblock_signals();
+    return 0;
+}

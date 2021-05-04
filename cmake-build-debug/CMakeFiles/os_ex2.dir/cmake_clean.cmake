@@ -1,5 +1,5 @@
 file(REMOVE_RECURSE
-  "CMakeFiles/os_ex2.dir/library.cpp.o"
+  "CMakeFiles/os_ex2.dir/uthreads.cpp.o"
   "libos_ex2.a"
   "libos_ex2.pdb"
 )

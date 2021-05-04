@@ -82,10 +82,10 @@
 				</MakeCommands>
 			</Target>
 		</Build>
-		<Unit filename="/cs/usr/ahmadok/CLionProjects/os_ex2/library.cpp">
+		<Unit filename="/cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp">
 			<Option target="os_ex2"/>
 		</Unit>
-		<Unit filename="/cs/usr/ahmadok/CLionProjects/os_ex2/library.h">
+		<Unit filename="/cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.h">
 			<Option target="os_ex2"/>
 		</Unit>
 		<Unit filename="/cs/usr/ahmadok/CLionProjects/os_ex2/CMakeLists.txt">
