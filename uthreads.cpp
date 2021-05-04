@@ -4,8 +4,8 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/time.h>
-#include <queue>
-using std::queue;
+#include <deque>
+using std::deque;
 
 
 typedef void (*func)();
@@ -52,16 +52,19 @@ address_t translate_address(address_t addr)
 
 #endif
 
+
 class Thread
 {
 private:
     sigjmp_buf env;
-    unsigned int id;
+    int id;
+    bool is_blocked;
 public:
-    Thread(unsigned int id, func f)
+    Thread(int id, func f)
     {
         char stack[STACK_SIZE];
         this->id = id;
+        this->is_blocked = false;
         address_t sp = (address_t)stack + STACK_SIZE - sizeof(address_t );
         address_t pc = (address_t)f;
         (this->env->__jmpbuf)[JB_SP] = translate_address(sp);
@@ -69,36 +72,39 @@ public:
         sigemptyset(&env->__saved_mask);
     }
 
-    unsigned int get_id() const
+    int get_id() const
     {
         return this->id;
     }
+
+    sigjmp_buf *get_env()
+    {
+        return &(this->env);
+    }
+
+    bool get_is_blocked() const
+    {
+        return is_blocked;
+    }
+
+    void switch_blocked()
+    {
+        is_blocked = !is_blocked;
+    }
+
 };
 
 
 int numThreads = 0;
-Thread *currentThread;
+Thread *threads[MAX_THREAD_NUM] = {nullptr};
+Thread *runningThread;
 bool used_ids[MAX_THREAD_NUM] = {false};
-queue<Thread*> threads_queue;
+deque<Thread*> threads_queue;
 sigset_t set;
 
 void do_nothing()
 {
     for(;;){}
-}
-int uthread_init(int quantum_usecs)
-{
-    if(quantum_usecs <= 0)
-    {
-        return -1;
-    }
-    Thread* mainThread = new Thread(0, do_nothing);
-    threads_queue.push(mainThread);
-    used_ids[0] = true;
-    numThreads += 1;
-    currentThread = mainThread; // todo ?
-    sigaddset(&set, SIGALRM);
-    return 0;
 }
 
 /**
@@ -119,11 +125,13 @@ int get_min()
 
 void block_signals()
 {
+    //todo
     sigprocmask(SIG_BLOCK, &set, nullptr);
 }
 
 void unblock_signals()
 {
+    //todo : check failure.
     sigprocmask(SIG_UNBLOCK,&set, nullptr);
 }
 /**
@@ -136,13 +144,51 @@ void free_all()
     while(!threads_queue.empty())
     {
         current = threads_queue.front();
-        threads_queue.pop();
+        threads_queue.pop_front();
         delete current;
     }
-
     unblock_signals();
+}
+
+int uthread_init(int quantum_usecs)
+{
+    if(quantum_usecs <= 0)
+    {
+        return -1;
+    }
+    Thread* mainThread = new Thread(0, do_nothing);
+    threads_queue.push_back(mainThread);
+    used_ids[0] = true;
+    threads[0] = mainThread;
+    numThreads += 1;
+    runningThread = mainThread; // todo ?
+    sigaddset(&set, SIGALRM);
+    return 0;
+}
+
+
+
+void switchThreads(bool is_terminated = false)
+{
+    block_signals();
+    int retVal = sigsetjmp(*(runningThread->get_env()), 1);
+    if(retVal != 0)
+    {
+        return;
+    }
+    Thread *new_th = threads_queue.front();
+    threads_queue.pop_front();
+    threads_queue.push_back(new_th);
+    while(new_th->get_is_blocked())
+    {
+        new_th = threads_queue.front();
+        threads_queue.pop_front();
+    }
+    Thread* new_thread = threads_queue.front();
+
 
 }
+
 int uthread_spawn(void (*f)(void))
 {
     block_signals();
@@ -155,8 +201,9 @@ int uthread_spawn(void (*f)(void))
     {
         int id = get_min();
         Thread* th = new Thread(id, f);
-        threads_queue.push(th);
+        threads_queue.push_back(th);
         used_ids[id] = true;
+        threads[id] = th;
         ++numThreads;
     } catch (std::bad_alloc&)
     {
@@ -169,5 +216,47 @@ int uthread_spawn(void (*f)(void))
     return 0;
 }
 
+int uthread_get_tid()
+{
+    return runningThread->get_id();
+}
+
 int uthread_terminate(int tid)
-{}
+{
+    block_signals();
+    if(!used_ids[tid])
+    {
+        return -1;
+    }
+
+    if(tid == 0)
+    {
+        //unblock_signals();
+        free_all();
+        exit(0);
+    }
+
+    if (runningThread == threads[tid])
+    {
+
+    }
+    else
+    {
+        Thread* curr = threads[tid];
+        for(auto it = threads_queue.begin(); it != threads_queue.end();it++)
+        {
+            if ((*it)->get_id() == tid)
+            {
+                threads_queue.erase(it);
+                break;
+            }
+        }
+
+        delete curr;
+        threads[tid] = nullptr;
+        --numThreads;
+        used_ids[tid] = false;
+    }
+
+    unblock_signals();
+}
