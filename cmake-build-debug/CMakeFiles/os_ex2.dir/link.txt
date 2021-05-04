@@ -1,0 +1,2 @@
+/usr/bin/ar qc libos_ex2.a  CMakeFiles/os_ex2.dir/library.cpp.o
+/usr/bin/ranlib libos_ex2.a
