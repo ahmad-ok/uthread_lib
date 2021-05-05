@@ -61,6 +61,7 @@ private:
     sigjmp_buf env;
     int id;
     bool is_blocked;
+    bool asked_for_mutix;
     int quantums;
 public:
     Thread(int id, func f)
@@ -68,6 +69,7 @@ public:
         char stack[STACK_SIZE];
         this->id = id;
         this->is_blocked = false;
+        this->asked_for_mutix = false;
         this->quantums = 0;
         address_t sp = (address_t)stack + STACK_SIZE - sizeof(address_t );
         address_t pc = (address_t)f;
@@ -108,6 +110,21 @@ public:
     void unblock_thread()
     {
         is_blocked = false;
+    }
+
+    void need_mutix()
+    {
+        asked_for_mutix = true;
+    }
+
+    void release_mutix()
+    {
+        asked_for_mutix = false;
+    }
+
+    bool get_need_mutix() const
+    {
+        return this->asked_for_mutix;
     }
 
 };
@@ -197,6 +214,10 @@ void switchThreads(bool terminated = false)
     int retVal = sigsetjmp(*(runningThread->get_env()), 1);
     if(retVal != 0)
     {
+        if(runningThread->get_need_mutix())
+        {
+            uthread_mutex_unlock();
+        }
         return;
     }
 
@@ -355,6 +376,7 @@ int uthread_mutex_lock()
             return -1;
         }
         mutex_Blocked.push(runningThread);
+        runningThread->need_mutix();
         uthread_block(runningThread->get_id());
     }
 
@@ -373,6 +395,7 @@ int uthread_mutex_unlock()
     }
 
     mutix = true;
+    runningThread->release_mutix();
     Thread* unblock_thread = mutex_Blocked.front();
     unblock_thread->unblock_thread();
     mutex_Blocked.pop();
