@@ -59,12 +59,14 @@ private:
     sigjmp_buf env;
     int id;
     bool is_blocked;
+    int quantums;
 public:
     Thread(int id, func f)
     {
         char stack[STACK_SIZE];
         this->id = id;
         this->is_blocked = false;
+        this->quantums = 0;
         address_t sp = (address_t)stack + STACK_SIZE - sizeof(address_t );
         address_t pc = (address_t)f;
         (this->env->__jmpbuf)[JB_SP] = translate_address(sp);
@@ -86,10 +88,24 @@ public:
     {
         return is_blocked;
     }
-
-    void switch_blocked()
+    void inc_quantums()
     {
-        is_blocked = !is_blocked;
+        quantums += 1;
+    }
+
+    int get_quantums() const
+    {
+        return quantums;
+    }
+
+    void block_thread()
+    {
+        is_blocked = true;
+    }
+
+    void unblock_thread()
+    {
+        is_blocked = false;
     }
 
 };
@@ -98,8 +114,8 @@ public:
 int numThreads = 0;
 Thread *threads[MAX_THREAD_NUM] = {nullptr};
 Thread *runningThread;
-bool used_ids[MAX_THREAD_NUM] = {false};
 deque<Thread*> threads_queue;
+int totalQuantums = 0;
 sigset_t set;
 
 void do_nothing()
@@ -115,7 +131,7 @@ int get_min()
 {
     for (int i = 0; i < MAX_THREAD_NUM; ++i)
     {
-        if (!used_ids[i])
+        if (threads[i] == nullptr)
         {
             return i;
         }
@@ -156,9 +172,10 @@ int uthread_init(int quantum_usecs)
     {
         return -1;
     }
+    totalQuantums += 1;
     Thread* mainThread = new Thread(0, do_nothing);
+    mainThread->inc_quantums();
     threads_queue.push_back(mainThread);
-    used_ids[0] = true;
     threads[0] = mainThread;
     numThreads += 1;
     runningThread = mainThread; // todo ?
@@ -168,7 +185,7 @@ int uthread_init(int quantum_usecs)
 
 
 
-void switchThreads(bool is_terminated = false)
+void switchThreads(bool terminated = false)
 {
     block_signals();
     int retVal = sigsetjmp(*(runningThread->get_env()), 1);
@@ -176,20 +193,30 @@ void switchThreads(bool is_terminated = false)
     {
         return;
     }
+
     Thread *new_th = threads_queue.front();
     threads_queue.pop_front();
-    threads_queue.push_back(new_th);
+    if(terminated)
+    {
+        threads_queue.push_back(new_th);
+    }
+    else
+    {
+        totalQuantums += 1;
+    }
     while(new_th->get_is_blocked())
     {
         new_th = threads_queue.front();
         threads_queue.pop_front();
     }
-    Thread* new_thread = threads_queue.front();
-
-
+    new_th = threads_queue.front();
+    runningThread = new_th;
+    runningThread->inc_quantums();
+    unblock_signals();
+    siglongjmp(*(runningThread->get_env()),1);
 }
 
-int uthread_spawn(void (*f)(void))
+int uthread_spawn(void (*f)())
 {
     block_signals();
     if(numThreads >= MAX_THREAD_NUM)
@@ -202,7 +229,6 @@ int uthread_spawn(void (*f)(void))
         int id = get_min();
         Thread* th = new Thread(id, f);
         threads_queue.push_back(th);
-        used_ids[id] = true;
         threads[id] = th;
         ++numThreads;
     } catch (std::bad_alloc&)
@@ -224,21 +250,21 @@ int uthread_get_tid()
 int uthread_terminate(int tid)
 {
     block_signals();
-    if(!used_ids[tid])
+    if(threads[tid] == nullptr)
     {
         return -1;
     }
 
     if(tid == 0)
     {
-        //unblock_signals();
         free_all();
         exit(0);
     }
 
     if (runningThread == threads[tid])
     {
-
+        threads[tid] = nullptr;
+        switchThreads(true);
     }
     else
     {
@@ -255,8 +281,55 @@ int uthread_terminate(int tid)
         delete curr;
         threads[tid] = nullptr;
         --numThreads;
-        used_ids[tid] = false;
     }
 
     unblock_signals();
+    return 0;
 }
+
+int uthread_block(int tid)
+{
+    block_signals();
+    if(threads[tid] == nullptr || tid == 0)
+    {
+        unblock_signals();
+        return -1;
+    }
+
+    threads[tid]->block_thread();
+    if(threads[tid] == runningThread)
+    {
+        switchThreads();
+    }
+    unblock_signals();
+    return 0;
+}
+
+int uthread_resume(int tid)
+{
+    block_signals();
+    if(threads[tid] == nullptr)
+    {
+        unblock_signals();
+        return -1;
+    }
+    threads[tid]->unblock_thread();
+    unblock_signals();
+    return 0;
+}
+
+
+int uthread_get_total_quantums()
+{
+    return totalQuantums;
+}
+
+int uthread_get_quantums(int tid)
+{
+    if(threads[tid] == nullptr)
+    {
+        return -1;
+    }
+    return threads[tid]->get_quantums();
+}
+

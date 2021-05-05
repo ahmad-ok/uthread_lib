@@ -91,7 +91,7 @@ int uthread_mutex_lock();
  * Return value: On success, return 0. On failure, return -1.
 */
 int uthread_mutex_unlock();
-
+ 
 
 /*
  * Description: This function returns the thread ID of the calling thread.
