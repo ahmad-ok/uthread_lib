@@ -5,7 +5,9 @@
 #include <setjmp.h>
 #include <sys/time.h>
 #include <deque>
+#include <queue>
 using std::deque;
+using std::queue;
 
 
 typedef void (*func)();
@@ -112,11 +114,15 @@ public:
 
 
 int numThreads = 0;
-Thread *threads[MAX_THREAD_NUM] = {nullptr};
-Thread *runningThread;
-deque<Thread*> threads_queue;
+Thread *threads[MAX_THREAD_NUM] = {nullptr}; // list of all threads each in its own id index
+Thread *runningThread; // the currently running thread
+deque<Thread*> threads_queue;  // all threads
+queue<Thread*> mutex_Blocked; // threads blocked after asking for mutix
+bool mutix = true; // if true means mutix is available
+Thread* locking_thread = nullptr; // the thread currently locking the mutix
 int totalQuantums = 0;
 sigset_t set;
+
 
 void do_nothing()
 {
@@ -331,5 +337,46 @@ int uthread_get_quantums(int tid)
         return -1;
     }
     return threads[tid]->get_quantums();
+}
+
+int uthread_mutex_lock()
+{
+    block_signals();
+    if(mutix)
+    {
+        mutix = false;
+        locking_thread = runningThread;
+    }
+    else
+    {
+        if(locking_thread == runningThread)
+        {
+            unblock_signals();
+            return -1;
+        }
+        mutex_Blocked.push(runningThread);
+        uthread_block(runningThread->get_id());
+    }
+
+    unblock_signals();
+    return 0;
+}
+
+int uthread_mutex_unlock()
+{
+
+    block_signals();
+    if(mutix)
+    {
+        unblock_signals();
+        return -1;
+    }
+
+    mutix = true;
+    Thread* unblock_thread = mutex_Blocked.front();
+    unblock_thread->unblock_thread();
+    mutex_Blocked.pop();
+    unblock_signals();
+    return 0;
 }
 
