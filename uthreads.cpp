@@ -13,6 +13,7 @@ using std::queue;
 typedef void (*func)();
 
 #define THREAD_ALLOCATION_FAIL_MSG "system error: Thread Allocation Failed"
+#define SET_TIMER_FAILED "system error: setting timer failed"
 
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
@@ -189,24 +190,13 @@ void free_all()
     unblock_signals();
 }
 
-int uthread_init(int quantum_usecs)
+void print_err(std::string string)
 {
-    if(quantum_usecs <= 0)
-    {
-        return -1;
-    }
-    totalQuantums += 1;
-    Thread* mainThread = new Thread(0, do_nothing);
-    mainThread->inc_quantums();
-    threads_queue.push_back(mainThread);
-    threads[0] = mainThread;
-    numThreads += 1;
-    runningThread = mainThread; // todo ?
-    sigaddset(&set, SIGALRM);
-    return 0;
+    block_signals();
+    free_all();
+    std::cout<<string<<std::endl;
+    exit(1);
 }
-
-
 
 void switchThreads(bool terminated = false)
 {
@@ -243,6 +233,42 @@ void switchThreads(bool terminated = false)
     siglongjmp(*(runningThread->get_env()),1);
 }
 
+void time_handler(int sig)
+{
+    switchThreads();
+}
+
+
+int uthread_init(int quantum_usecs)
+{
+    if(quantum_usecs <= 0)
+    {
+        return -1;
+    }
+    struct sigaction sa = {0};
+    struct itimerval timer;
+    sa.sa_handler = &time_handler;
+    totalQuantums += 1;
+    Thread* mainThread = new Thread(0, do_nothing); //todo: mem leak
+    mainThread->inc_quantums();
+    threads_queue.push_back(mainThread);
+    threads[0] = mainThread;
+    numThreads += 1;
+    runningThread = mainThread; // todo ?
+    sigaddset(&set, SIGALRM);
+
+    timer.it_value.tv_sec = 0;
+    timer.it_value.tv_usec = quantum_usecs;
+    timer.it_interval.tv_sec = 0;
+    timer.it_interval.tv_usec = quantum_usecs;
+
+    if(setitimer(ITIMER_VIRTUAL, &timer, NULL))
+    {
+        print_err(SET_TIMER_FAILED);
+    }
+    return 0;
+}
+
 int uthread_spawn(void (*f)())
 {
     block_signals();
@@ -260,9 +286,7 @@ int uthread_spawn(void (*f)())
         ++numThreads;
     } catch (std::bad_alloc&)
     {
-        std::cerr << THREAD_ALLOCATION_FAIL_MSG << std::endl;
-        free_all();
-        exit(1);
+        print_err(THREAD_ALLOCATION_FAIL_MSG);
     }
 
     unblock_signals();

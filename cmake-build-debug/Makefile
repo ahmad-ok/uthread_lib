@@ -68,10 +68,10 @@ RM = /usr/local/APP/jetbrains/clion/2020.2/bin/cmake/linux/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /cs/usr/ahmadok/CLionProjects/os_ex2
+CMAKE_SOURCE_DIR = /cs/usr/maherhanut/CLionProjects/os_ex2
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug
+CMAKE_BINARY_DIR = /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug
 
 #=============================================================================
 # Targets provided globally by CMake.
@@ -100,9 +100,9 @@ edit_cache/fast: edit_cache
 
 # The main all target
 all: cmake_check_build_system
-	$(CMAKE_COMMAND) -E cmake_progress_start /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles/progress.marks
+	$(CMAKE_COMMAND) -E cmake_progress_start /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles/progress.marks
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 all
-	$(CMAKE_COMMAND) -E cmake_progress_start /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles 0
+	$(CMAKE_COMMAND) -E cmake_progress_start /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles 0
 .PHONY : all
 
 # The main clean target
@@ -143,32 +143,32 @@ os_ex2/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/build
 .PHONY : os_ex2/fast
 
-uthreads.o: uthreads.cpp.o
+library.o: library.cpp.o
 
-.PHONY : uthreads.o
+.PHONY : library.o
 
 # target to build an object file
-uthreads.cpp.o:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.o
-.PHONY : uthreads.cpp.o
+library.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.o
+.PHONY : library.cpp.o
 
-uthreads.i: uthreads.cpp.i
+library.i: library.cpp.i
 
-.PHONY : uthreads.i
+.PHONY : library.i
 
 # target to preprocess a source file
-uthreads.cpp.i:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.i
-.PHONY : uthreads.cpp.i
+library.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.i
+.PHONY : library.cpp.i
 
-uthreads.s: uthreads.cpp.s
+library.s: library.cpp.s
 
-.PHONY : uthreads.s
+.PHONY : library.s
 
 # target to generate assembly for a file
-uthreads.cpp.s:
-	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/uthreads.cpp.s
-.PHONY : uthreads.cpp.s
+library.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/os_ex2.dir/build.make CMakeFiles/os_ex2.dir/library.cpp.s
+.PHONY : library.cpp.s
 
 # Help Target
 help:
@@ -179,9 +179,9 @@ help:
 	@echo "... edit_cache"
 	@echo "... rebuild_cache"
 	@echo "... os_ex2"
-	@echo "... uthreads.o"
-	@echo "... uthreads.i"
-	@echo "... uthreads.s"
+	@echo "... library.o"
+	@echo "... library.i"
+	@echo "... library.s"
 .PHONY : help
 
 

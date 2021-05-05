@@ -63,10 +63,10 @@ RM = /usr/local/APP/jetbrains/clion/2020.2/bin/cmake/linux/bin/cmake -E rm -f
 EQUALS = =
 
 # The top-level source directory on which CMake was run.
-CMAKE_SOURCE_DIR = /cs/usr/ahmadok/CLionProjects/os_ex2
+CMAKE_SOURCE_DIR = /cs/usr/maherhanut/CLionProjects/os_ex2
 
 # The top-level build directory on which CMake was run.
-CMAKE_BINARY_DIR = /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug
+CMAKE_BINARY_DIR = /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug
 
 # Include any dependencies generated for this target.
 include CMakeFiles/os_ex2.dir/depend.make
@@ -77,30 +77,30 @@ include CMakeFiles/os_ex2.dir/progress.make
 # Include the compile flags for this target's objects.
 include CMakeFiles/os_ex2.dir/flags.make
 
-CMakeFiles/os_ex2.dir/uthreads.cpp.o: CMakeFiles/os_ex2.dir/flags.make
-CMakeFiles/os_ex2.dir/uthreads.cpp.o: ../uthreads.cpp
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/os_ex2.dir/uthreads.cpp.o"
-	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/os_ex2.dir/uthreads.cpp.o -c /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp
+CMakeFiles/os_ex2.dir/library.cpp.o: CMakeFiles/os_ex2.dir/flags.make
+CMakeFiles/os_ex2.dir/library.cpp.o: ../library.cpp
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_1) "Building CXX object CMakeFiles/os_ex2.dir/library.cpp.o"
+	/usr/bin/c++  $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -o CMakeFiles/os_ex2.dir/library.cpp.o -c /cs/usr/maherhanut/CLionProjects/os_ex2/library.cpp
 
-CMakeFiles/os_ex2.dir/uthreads.cpp.i: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/os_ex2.dir/uthreads.cpp.i"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp > CMakeFiles/os_ex2.dir/uthreads.cpp.i
+CMakeFiles/os_ex2.dir/library.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/os_ex2.dir/library.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /cs/usr/maherhanut/CLionProjects/os_ex2/library.cpp > CMakeFiles/os_ex2.dir/library.cpp.i
 
-CMakeFiles/os_ex2.dir/uthreads.cpp.s: cmake_force
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/os_ex2.dir/uthreads.cpp.s"
-	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /cs/usr/ahmadok/CLionProjects/os_ex2/uthreads.cpp -o CMakeFiles/os_ex2.dir/uthreads.cpp.s
+CMakeFiles/os_ex2.dir/library.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/os_ex2.dir/library.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /cs/usr/maherhanut/CLionProjects/os_ex2/library.cpp -o CMakeFiles/os_ex2.dir/library.cpp.s
 
 # Object files for target os_ex2
 os_ex2_OBJECTS = \
-"CMakeFiles/os_ex2.dir/uthreads.cpp.o"
+"CMakeFiles/os_ex2.dir/library.cpp.o"
 
 # External object files for target os_ex2
 os_ex2_EXTERNAL_OBJECTS =
 
-libos_ex2.a: CMakeFiles/os_ex2.dir/uthreads.cpp.o
+libos_ex2.a: CMakeFiles/os_ex2.dir/library.cpp.o
 libos_ex2.a: CMakeFiles/os_ex2.dir/build.make
 libos_ex2.a: CMakeFiles/os_ex2.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libos_ex2.a"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles --progress-num=$(CMAKE_PROGRESS_2) "Linking CXX static library libos_ex2.a"
 	$(CMAKE_COMMAND) -P CMakeFiles/os_ex2.dir/cmake_clean_target.cmake
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/os_ex2.dir/link.txt --verbose=$(VERBOSE)
 
@@ -114,6 +114,6 @@ CMakeFiles/os_ex2.dir/clean:
 .PHONY : CMakeFiles/os_ex2.dir/clean
 
 CMakeFiles/os_ex2.dir/depend:
-	cd /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /cs/usr/ahmadok/CLionProjects/os_ex2 /cs/usr/ahmadok/CLionProjects/os_ex2 /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug /cs/usr/ahmadok/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles/os_ex2.dir/DependInfo.cmake --color=$(COLOR)
+	cd /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug && $(CMAKE_COMMAND) -E cmake_depends "Unix Makefiles" /cs/usr/maherhanut/CLionProjects/os_ex2 /cs/usr/maherhanut/CLionProjects/os_ex2 /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug /cs/usr/maherhanut/CLionProjects/os_ex2/cmake-build-debug/CMakeFiles/os_ex2.dir/DependInfo.cmake --color=$(COLOR)
 .PHONY : CMakeFiles/os_ex2.dir/depend
 
