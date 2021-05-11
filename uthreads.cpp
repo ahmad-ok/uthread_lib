@@ -14,7 +14,12 @@ typedef void (*func)();
 
 #define THREAD_ALLOCATION_FAIL_MSG "system error: Thread Allocation Failed"
 #define SET_TIMER_FAILED "system error: setting timer failed"
-
+#define SET_SIGACTION_FAIL_MSG "system error: setting sigaction failed"
+#define INIT_ERROR_MSG "thread library error: invalid quantum length"
+#define THREAD_NOT_INITIALIZED_ERR_MSG "thread library error: thread does not exist, cannot terminate\n"
+#define THREAD_BLOCK_ERROR_MSG "thread library error: cannot block nonexistent thread or main thread (id 0)"
+#define THREAD_EXCEEDED_MAX_NUM_MSG "thread library error: number of threads exceeded max amount"
+#define THREAD_DOES_NOT_EXIST_MSG "thread library error: thread does not exist"
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
 
@@ -54,7 +59,8 @@ address_t translate_address(address_t addr)
 }
 
 #endif
-
+struct sigaction sa = {0};
+struct itimerval timer;
 
 class Thread
 {
@@ -64,10 +70,11 @@ private:
     bool is_blocked;
     bool asked_for_mutix;
     int quantums;
+    char stack[STACK_SIZE];
 public:
     Thread(int id, func f)
     {
-        char stack[STACK_SIZE];
+
         this->id = id;
         this->is_blocked = false;
         this->asked_for_mutix = false;
@@ -113,17 +120,17 @@ public:
         is_blocked = false;
     }
 
-    void need_mutix()
+    void need_mutex()
     {
         asked_for_mutix = true;
     }
 
-    void release_mutix()
+    void release_mutex()
     {
         asked_for_mutix = false;
     }
 
-    bool get_need_mutix() const
+    bool get_need_mutex() const
     {
         return this->asked_for_mutix;
     }
@@ -135,17 +142,13 @@ int numThreads = 0;
 Thread *threads[MAX_THREAD_NUM] = {nullptr}; // list of all threads each in its own id index
 Thread *runningThread; // the currently running thread
 deque<Thread*> threads_queue;  // all threads
-queue<Thread*> mutex_Blocked; // threads blocked after asking for mutix
-bool mutix = true; // if true means mutix is available
-Thread* locking_thread = nullptr; // the thread currently locking the mutix
+queue<Thread*> mutex_Blocked; // threads blocked after asking for mutex
+bool mutex = true; // if true means mutex is available
+Thread* locking_thread = nullptr; // the thread currently locking the mutex
 int totalQuantums = 0;
 sigset_t set;
-
-
-void do_nothing()
-{
-    for(;;){}
-}
+int quantumusec;
+void time_handler(int sig);
 
 /**
  * find minimum thread id that has not been used
@@ -173,6 +176,7 @@ void unblock_signals()
 {
     //todo : check failure.
     sigprocmask(SIG_UNBLOCK,&set, nullptr);
+
 }
 /**
  * Free all threads spawned, call when failure or finished executing
@@ -187,48 +191,68 @@ void free_all()
         threads_queue.pop_front();
         delete current;
     }
+
     unblock_signals();
 }
 
-void print_err(std::string string)
+void print_err(const std::string& string)
 {
     block_signals();
     free_all();
-    std::cout<<string<<std::endl;
+    std::cerr<<string<<std::endl;
     exit(1);
 }
 
 void switchThreads(bool terminated = false)
 {
-    block_signals();
-    int retVal = sigsetjmp(*(runningThread->get_env()), 1);
-    if(retVal != 0)
-    {
-        if(runningThread->get_need_mutix())
-        {
-            uthread_mutex_unlock();
-        }
-        return;
-    }
 
-    Thread *new_th = threads_queue.front();
-    threads_queue.pop_front();
+    block_signals();
+    totalQuantums += 1;
     if(terminated)
     {
-        threads_queue.push_back(new_th);
+        threads[runningThread->get_id()] = nullptr;
+        delete runningThread; //todo delete nullptr
+        runningThread = nullptr;
+        numThreads -= 1;
     }
     else
     {
-        totalQuantums += 1;
+
+        threads_queue.push_back(runningThread);
+        int retVal = sigsetjmp(*(runningThread->get_env()), 1);
+        if (retVal != 0)
+        {
+
+            if (runningThread->get_need_mutex())
+            {
+                uthread_mutex_unlock();
+            }
+            unblock_signals();
+            return;
+        }
     }
+    threads_queue.pop_front();
+    Thread *new_th = threads_queue.front();
+
     while(new_th->get_is_blocked())
     {
-        new_th = threads_queue.front();
+        threads_queue.push_back(new_th);
         threads_queue.pop_front();
+        new_th = threads_queue.front();
+
     }
-    new_th = threads_queue.front();
-    runningThread = new_th;
+    runningThread  = threads_queue.front();
     runningThread->inc_quantums();
+
+    timer.it_value.tv_sec = quantumusec/1000000;
+    timer.it_value.tv_usec = quantumusec%1000000;
+
+    if(setitimer(ITIMER_VIRTUAL, &timer, NULL))
+    {
+        print_err(SET_TIMER_FAILED);
+    }
+
+
     unblock_signals();
     siglongjmp(*(runningThread->get_env()),1);
 }
@@ -243,13 +267,17 @@ int uthread_init(int quantum_usecs)
 {
     if(quantum_usecs <= 0)
     {
+        std::cerr<<INIT_ERROR_MSG<<std::endl;
         return -1;
     }
-    struct sigaction sa = {0};
-    struct itimerval timer;
+
+    quantumusec = quantum_usecs;
     sa.sa_handler = &time_handler;
+    if (sigaction(SIGVTALRM,&sa,NULL)){
+        print_err(SET_SIGACTION_FAIL_MSG);
+    }
     totalQuantums += 1;
-    Thread* mainThread = new Thread(0, do_nothing); //todo: mem leak
+    Thread* mainThread = new Thread(0, nullptr); //todo: mem leak
     mainThread->inc_quantums();
     threads_queue.push_back(mainThread);
     threads[0] = mainThread;
@@ -257,15 +285,16 @@ int uthread_init(int quantum_usecs)
     runningThread = mainThread; // todo ?
     sigaddset(&set, SIGALRM);
 
-    timer.it_value.tv_sec = 0;
-    timer.it_value.tv_usec = quantum_usecs;
-    timer.it_interval.tv_sec = 0;
-    timer.it_interval.tv_usec = quantum_usecs;
+
+    timer.it_value.tv_sec = quantum_usecs/1000000;
+    timer.it_value.tv_usec = quantum_usecs%1000000;
 
     if(setitimer(ITIMER_VIRTUAL, &timer, NULL))
     {
         print_err(SET_TIMER_FAILED);
     }
+
+
     return 0;
 }
 
@@ -274,12 +303,13 @@ int uthread_spawn(void (*f)())
     block_signals();
     if(numThreads >= MAX_THREAD_NUM)
     {
+        std::cerr<<THREAD_EXCEEDED_MAX_NUM_MSG<<std::endl;
         unblock_signals();
         return -1;
     }
+    int id = get_min();
     try
     {
-        int id = get_min();
         Thread* th = new Thread(id, f);
         threads_queue.push_back(th);
         threads[id] = th;
@@ -290,7 +320,7 @@ int uthread_spawn(void (*f)())
     }
 
     unblock_signals();
-    return 0;
+    return id;
 }
 
 int uthread_get_tid()
@@ -303,6 +333,8 @@ int uthread_terminate(int tid)
     block_signals();
     if(threads[tid] == nullptr)
     {
+        fprintf(stderr,THREAD_NOT_INITIALIZED_ERR_MSG);
+        unblock_signals();
         return -1;
     }
 
@@ -314,7 +346,6 @@ int uthread_terminate(int tid)
 
     if (runningThread == threads[tid])
     {
-        threads[tid] = nullptr;
         switchThreads(true);
     }
     else
@@ -343,6 +374,7 @@ int uthread_block(int tid)
     block_signals();
     if(threads[tid] == nullptr || tid == 0)
     {
+        std::cerr<<THREAD_BLOCK_ERROR_MSG<<std::endl;
         unblock_signals();
         return -1;
     }
@@ -361,6 +393,7 @@ int uthread_resume(int tid)
     block_signals();
     if(threads[tid] == nullptr)
     {
+        fprintf(stderr,"thread library error:  hey \n");
         unblock_signals();
         return -1;
     }
@@ -377,8 +410,9 @@ int uthread_get_total_quantums()
 
 int uthread_get_quantums(int tid)
 {
-    if(threads[tid] == nullptr)
+    if(!threads[tid] )
     {
+        std::cerr<<THREAD_DOES_NOT_EXIST_MSG<<std::endl;
         return -1;
     }
     return threads[tid]->get_quantums();
@@ -387,9 +421,9 @@ int uthread_get_quantums(int tid)
 int uthread_mutex_lock()
 {
     block_signals();
-    if(mutix)
+    if(mutex)
     {
-        mutix = false;
+        mutex = false;
         locking_thread = runningThread;
     }
     else
@@ -400,7 +434,7 @@ int uthread_mutex_lock()
             return -1;
         }
         mutex_Blocked.push(runningThread);
-        runningThread->need_mutix();
+        runningThread->need_mutex();
         uthread_block(runningThread->get_id());
     }
 
@@ -412,14 +446,14 @@ int uthread_mutex_unlock()
 {
 
     block_signals();
-    if(mutix)
+    if(mutex)
     {
         unblock_signals();
         return -1;
     }
 
-    mutix = true;
-    runningThread->release_mutix();
+    mutex = true;
+    runningThread->release_mutex();
     Thread* unblock_thread = mutex_Blocked.front();
     unblock_thread->unblock_thread();
     mutex_Blocked.pop();
