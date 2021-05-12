@@ -74,7 +74,7 @@ private:
 public:
     Thread(int id, func f)
     {
-
+        sigsetjmp(env, 1);
         this->id = id;
         this->is_blocked = false;
         this->asked_for_mutix = false;
@@ -84,6 +84,7 @@ public:
         (this->env->__jmpbuf)[JB_SP] = translate_address(sp);
         (this->env->__jmpbuf)[JB_PC] = translate_address(pc);
         sigemptyset(&env->__saved_mask);
+
     }
 
     int get_id() const
@@ -244,13 +245,6 @@ void switchThreads(bool remove_head = false, bool block = false)
     runningThread = ready_threads_queue.front();
     runningThread->inc_quantums();
 
-    //while(new_th->get_is_blocked())
-    //{
-      //  ready_threads_queue.push_back(new_th);
-       // ready_threads_queue.pop_front();
-        //new_th = ready_threads_queue.front();
-
-    //}
 
     timer.it_value.tv_sec = quantumusec/1000000;
     timer.it_value.tv_usec = quantumusec%1000000;
@@ -301,7 +295,6 @@ int uthread_init(int quantum_usecs)
         print_err(SET_TIMER_FAILED);
     }
 
-
     return 0;
 }
 
@@ -321,6 +314,7 @@ int uthread_spawn(void (*f)())
         ready_threads_queue.push_back(th);
         threads[id] = th;
         ++numThreads;
+
     } catch (std::bad_alloc&)
     {
         print_err(THREAD_ALLOCATION_FAIL_MSG);
