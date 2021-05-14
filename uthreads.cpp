@@ -183,6 +183,9 @@ void free_all()
         delete allThreads[i];
         allThreads[i] = nullptr;
     }
+    readyThreads.clear();
+    totalQuantums = 0;
+    threadsNum = 0;
 
     unblock_signals();
 }
@@ -193,6 +196,11 @@ void print_err(const std::string& string)
     free_all();
     std::cerr<<string<<std::endl;
     exit(1);
+}
+
+void main_loop()
+{
+    while (true) { }
 }
 
 void remove_from_ready(int tid)
@@ -215,11 +223,12 @@ void switchThreads(bool termination = false, bool blocking = false)
     block_signals();
     totalQuantums += 1;
 
-    int retval = sigsetjmp(*(runningThread->get_env()), 1);
-    if (retval != 0)
-    {
-        unblock_signals();
-        return;
+    if(!termination) {
+        int retval = sigsetjmp(*(runningThread->get_env()), 1);
+        if (retval != 0) {
+            unblock_signals();
+            return;
+        }
     }
 
     if (!termination && !blocking)
@@ -264,7 +273,7 @@ int uthread_init(int quantum_usecs)
     if (sigaction(SIGVTALRM,&sa,NULL)){
         print_err(SET_SIGACTION_FAIL_MSG);
     }
-    auto* mainThread = new Thread(0, nullptr); //todo: mem leak
+    auto* mainThread = new Thread(0, main_loop); //todo: mem leak
     totalQuantums = 1;
     mainThread->inc_quantums();
     readyThreads.push_back(mainThread);
