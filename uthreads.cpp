@@ -18,6 +18,8 @@ typedef void (*func)();
 #define THREAD_BLOCK_ERROR_MSG "thread library error: cannot block nonexistent thread or main thread (id 0)\n"
 #define THREAD_EXCEEDED_MAX_NUM_MSG "thread library error: number of threads exceeded max amount\n"
 #define THREAD_DOES_NOT_EXIST_MSG "thread library error: thread does not exist\n"
+#define MUTIX_ALREADY_LOCKED_MSG "Mutix is already locked by this thread\n"
+#define MUTIX_ALREADY_UNLOCKED_MSG "Mutix is already unlocked\n"
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
 
@@ -119,7 +121,7 @@ public:
         is_blocked = false;
     }
 
-    void need_mutex()
+    void wait_mutix()
     {
         asked_for_mutix = true;
     }
@@ -138,11 +140,14 @@ public:
 //Global Variables
 int threadsNum = 0;
 list<Thread*> readyThreads;
+list<Thread*> blockedByMutixThreads;
 Thread* allThreads[MAX_THREAD_NUM] = {nullptr};
 sigset_t set;
 int totalQuantums = 0;
 Thread* runningThread = nullptr;
 int quantumusec = 0;
+bool mutixIsAvailable = true;
+Thread* mutixLocker = nullptr;
 
 
 /**
@@ -226,6 +231,10 @@ void switchThreads(bool termination = false, bool blocking = false)
     if(!termination) {
         int retval = sigsetjmp(*(runningThread->get_env()), 1);
         if (retval != 0) {
+            if(runningThread->get_need_mutex())
+            {
+                uthread_mutex_lock();
+            }
             unblock_signals();
             return;
         }
@@ -424,4 +433,56 @@ int uthread_get_quantums(int tid)
     }
     unblock_signals();
     return allThreads[tid]->get_quantums();
+}
+
+
+
+
+int uthread_mutex_lock()
+{
+    block_signals();
+    if(mutixIsAvailable)
+    {
+        mutixIsAvailable = false;
+        mutixLocker = runningThread;
+        unblock_signals();
+        return 0;
+    }
+
+    if(mutixLocker == runningThread)
+    {
+        fprintf(stderr, MUTIX_ALREADY_LOCKED_MSG);
+        unblock_signals();
+        return -1;
+    }
+
+    //todo Check what should happen when tthread is locked from mutix then blocked by user using uthread_block
+    blockedByMutixThreads.push_back(runningThread);
+    runningThread->wait_mutix();
+    uthread_block(runningThread->get_id());
+    unblock_signals();
+    return -1;
+}
+
+int uthread_mutex_unlock()
+{
+    block_signals();
+    if(mutixIsAvailable)
+    {
+        fprintf(stderr, MUTIX_ALREADY_UNLOCKED_MSG);
+        unblock_signals();
+        return -1;
+    }
+
+    mutixIsAvailable = true;
+    if(!blockedByMutixThreads.empty())
+    {
+        Thread* th = blockedByMutixThreads.front();
+        blockedByMutixThreads.pop_front();
+        readyThreads.push_back(th);
+        th->unblock_thread();
+    }
+
+    unblock_signals();
+    return 0;
 }
