@@ -4,22 +4,20 @@
 #include <signal.h>
 #include <setjmp.h>
 #include <sys/time.h>
-#include <deque>
-#include <queue>
-using std::deque;
-using std::queue;
+#include <list>
+using std::list;
 
 
 typedef void (*func)();
 
-#define THREAD_ALLOCATION_FAIL_MSG "system error: Thread Allocation Failed"
-#define SET_TIMER_FAILED "system error: setting timer failed"
-#define SET_SIGACTION_FAIL_MSG "system error: setting sigaction failed"
-#define INIT_ERROR_MSG "thread library error: invalid quantum length"
+#define THREAD_ALLOCATION_FAIL_MSG "system error: Thread Allocation Failed\n"
+#define SET_TIMER_FAILED "system error: setting timer failed\n"
+#define SET_SIGACTION_FAIL_MSG "system error: setting sigaction failed\n"
+#define INIT_ERROR_MSG "thread library error: invalid quantum length\n"
 #define THREAD_NOT_INITIALIZED_ERR_MSG "thread library error: thread does not exist, cannot terminate\n"
-#define THREAD_BLOCK_ERROR_MSG "thread library error: cannot block nonexistent thread or main thread (id 0)"
-#define THREAD_EXCEEDED_MAX_NUM_MSG "thread library error: number of threads exceeded max amount"
-#define THREAD_DOES_NOT_EXIST_MSG "thread library error: thread does not exist"
+#define THREAD_BLOCK_ERROR_MSG "thread library error: cannot block nonexistent thread or main thread (id 0)\n"
+#define THREAD_EXCEEDED_MAX_NUM_MSG "thread library error: number of threads exceeded max amount\n"
+#define THREAD_DOES_NOT_EXIST_MSG "thread library error: thread does not exist\n"
 #ifdef __x86_64__
 /* code for 64 bit Intel arch */
 
@@ -137,19 +135,15 @@ public:
     }
 
 };
-
-
-int numThreads = 0;
-Thread *threads[MAX_THREAD_NUM] = {nullptr}; // list of all threads each in its own id index
-Thread *runningThread; // the currently running thread
-deque<Thread*> ready_threads_queue;  // all threads
-queue<Thread*> mutex_blocked; // threads blocked after asking for mutex
-bool mutex = true; // if true means mutex is available
-Thread* locking_thread = nullptr; // the thread currently locking the mutex
-int totalQuantums = 0;
+//Global Variables
+int threadsNum = 0;
+list<Thread*> readyThreads;
+Thread* allThreads[MAX_THREAD_NUM] = {nullptr};
 sigset_t set;
-int quantumusec;
-void time_handler(int sig);
+int totalQuantums = 0;
+Thread* runningThread = nullptr;
+int quantumusec = 0;
+
 
 /**
  * find minimum thread id that has not been used
@@ -159,7 +153,7 @@ int get_min()
 {
     for (int i = 0; i < MAX_THREAD_NUM; ++i)
     {
-        if (threads[i] == nullptr)
+        if (allThreads[i] == nullptr)
         {
             return i;
         }
@@ -177,7 +171,6 @@ void unblock_signals()
 {
     //todo : check failure.
     sigprocmask(SIG_UNBLOCK,&set, nullptr);
-
 }
 /**
  * Free all threads spawned, call when failure or finished executing
@@ -185,12 +178,10 @@ void unblock_signals()
 void free_all()
 {
     block_signals();
-    Thread* current;
-    while(!ready_threads_queue.empty())
+    for(int i = 0; i < MAX_THREAD_NUM; ++i)
     {
-        current = ready_threads_queue.front();
-        ready_threads_queue.pop_front();
-        delete current;
+        delete allThreads[i];
+        allThreads[i] = nullptr;
     }
 
     unblock_signals();
@@ -204,47 +195,41 @@ void print_err(const std::string& string)
     exit(1);
 }
 
-void switchThreads(bool remove_head = false, bool block = false)
+void remove_from_ready(int tid)
 {
+    block_signals();
+    for(auto it = readyThreads.begin(); it != readyThreads.end();it++)
+    {
+        if ((*it) == allThreads[tid])
+        {
+            readyThreads.erase(it);
+            unblock_signals();
+            return;
+        }
+    }
+    unblock_signals();
+}
 
+void switchThreads(bool termination = false, bool blocking = false)
+{
     block_signals();
     totalQuantums += 1;
 
-    if(block)
+    int retval = sigsetjmp(*(runningThread->get_env()), 1);
+    if (retval != 0)
     {
-        int retVal = sigsetjmp(*(runningThread->get_env()), 1);
-        if (retVal != 0)
-        {
-
-            if (runningThread->get_need_mutex())
-            {
-                uthread_mutex_unlock();
-            }
-            unblock_signals();
-            return;
-        }
+        unblock_signals();
+        return;
     }
 
-    if(!remove_head)
+    if (!termination && !blocking)
     {
-        ready_threads_queue.push_back(runningThread);
-        int retVal = sigsetjmp(*(runningThread->get_env()), 1);
-        if (retVal != 0)
-        {
-
-            if (runningThread->get_need_mutex())
-            {
-                uthread_mutex_unlock();
-            }
-            unblock_signals();
-            return;
-        }
+        readyThreads.push_back(runningThread);
     }
 
-    ready_threads_queue.pop_front();
-    runningThread = ready_threads_queue.front();
+    readyThreads.pop_front();
+    runningThread = readyThreads.front();
     runningThread->inc_quantums();
-
 
     timer.it_value.tv_sec = quantumusec/1000000;
     timer.it_value.tv_usec = quantumusec%1000000;
@@ -255,7 +240,8 @@ void switchThreads(bool remove_head = false, bool block = false)
     }
 
     unblock_signals();
-    siglongjmp(*(runningThread->get_env()),1);
+    siglongjmp(*(runningThread->get_env()), 1);
+
 }
 
 void time_handler(int sig)
@@ -268,11 +254,12 @@ int uthread_init(int quantum_usecs)
 {
     if(quantum_usecs <= 0)
     {
-        std::cerr<<INIT_ERROR_MSG<<std::endl;
+        fprintf(stderr, INIT_ERROR_MSG);
         return -1;
     }
 
     quantumusec = quantum_usecs;
+
     sa.sa_handler = &time_handler;
     if (sigaction(SIGVTALRM,&sa,NULL)){
         print_err(SET_SIGACTION_FAIL_MSG);
@@ -280,70 +267,50 @@ int uthread_init(int quantum_usecs)
     auto* mainThread = new Thread(0, nullptr); //todo: mem leak
     totalQuantums = 1;
     mainThread->inc_quantums();
-    ready_threads_queue.push_back(mainThread);
-    threads[0] = mainThread;
-    numThreads += 1;
-    runningThread = mainThread; // todo ?
+    readyThreads.push_back(mainThread);
+    allThreads[0] = mainThread;
+    threadsNum += 1;
+    runningThread = mainThread;
     sigaddset(&set, SIGALRM);
-
-
     timer.it_value.tv_sec = quantum_usecs/1000000;
     timer.it_value.tv_usec = quantum_usecs%1000000;
-
     if(setitimer(ITIMER_VIRTUAL, &timer, NULL))
     {
         print_err(SET_TIMER_FAILED);
     }
-
     return 0;
 }
 
-int uthread_spawn(void (*f)())
+int uthread_spawn(void (*f)(void))
 {
     block_signals();
-    if(numThreads >= MAX_THREAD_NUM)
+    if(threadsNum >= MAX_THREAD_NUM)
     {
-        std::cerr<<THREAD_EXCEEDED_MAX_NUM_MSG<<std::endl;
+        fprintf(stderr, THREAD_EXCEEDED_MAX_NUM_MSG);
         unblock_signals();
         return -1;
     }
+
     int id = get_min();
     try
     {
         auto* th = new Thread(id, f);
-        ready_threads_queue.push_back(th);
-        threads[id] = th;
-        ++numThreads;
+        readyThreads.push_back(th);
+        allThreads[id] = th;
+        ++threadsNum;
 
     } catch (std::bad_alloc&)
     {
         print_err(THREAD_ALLOCATION_FAIL_MSG);
     }
-
     unblock_signals();
     return id;
 }
 
-int uthread_get_tid()
-{
-    return runningThread->get_id();
-}
-
-void remove_from_queue(int tid)
-{
-    for(auto it = ready_threads_queue.begin(); it != ready_threads_queue.end();it++)
-    {
-        if ((*it)->get_id() == tid)
-        {
-            ready_threads_queue.erase(it);
-            break;
-        }
-    }
-}
 int uthread_terminate(int tid)
 {
     block_signals();
-    if(threads[tid] == nullptr)
+    if(tid >= MAX_THREAD_NUM || allThreads[tid] == nullptr)
     {
         fprintf(stderr,THREAD_NOT_INITIALIZED_ERR_MSG);
         unblock_signals();
@@ -356,24 +323,22 @@ int uthread_terminate(int tid)
         exit(0);
     }
 
-    if (runningThread == threads[tid])
+    if(runningThread == allThreads[tid])
     {
-        threads[tid] = nullptr;
-        delete runningThread; //todo delete nullptr
+        --threadsNum;
+        allThreads[tid] = nullptr;
+        delete runningThread;
         runningThread = nullptr;
-        numThreads -= 1;
         switchThreads(true, false);
-
     }
-    else
+
+    if(!allThreads[tid]->get_is_blocked())
     {
-        Thread* curr = threads[tid];
-        remove_from_queue(tid);
-        delete curr;
-        threads[tid] = nullptr;
-        --numThreads;
+        remove_from_ready(tid); //note this delete is based on all threads so dont delete before remove
     }
-
+    delete allThreads[tid];
+    allThreads[tid] = nullptr;
+    --threadsNum;
     unblock_signals();
     return 0;
 }
@@ -381,23 +346,29 @@ int uthread_terminate(int tid)
 int uthread_block(int tid)
 {
     block_signals();
-    if(threads[tid] == nullptr || tid == 0)
+    if(tid >= MAX_THREAD_NUM || allThreads[tid] == nullptr || tid ==0)
     {
-        std::cerr<<THREAD_BLOCK_ERROR_MSG<<std::endl;
+        fprintf(stderr, THREAD_BLOCK_ERROR_MSG);
         unblock_signals();
         return -1;
     }
 
-    threads[tid]->block_thread();
-    if(threads[tid] == runningThread)
+    if(allThreads[tid]->get_is_blocked())
     {
-        switchThreads(true, true);
-    }
-    else
-    {
-        remove_from_queue(tid);
+        unblock_signals();
+        return 0;
     }
 
+    if(allThreads[tid] == runningThread)
+    {
+        runningThread->block_thread();
+        switchThreads(false, true);
+        unblock_signals();
+        return 0;
+    }
+
+    allThreads[tid]->block_thread();
+    remove_from_ready(tid);
     unblock_signals();
     return 0;
 }
@@ -405,24 +376,28 @@ int uthread_block(int tid)
 int uthread_resume(int tid)
 {
     block_signals();
-    if(threads[tid] == nullptr)
+    if(tid >= MAX_THREAD_NUM || allThreads[tid]== nullptr)
     {
         fprintf(stderr,"thread library error:  hey \n");
         unblock_signals();
         return -1;
     }
 
-
-    if(threads[tid]->get_is_blocked())
+    if (allThreads[tid]->get_is_blocked())
     {
-        ready_threads_queue.push_back(threads[tid]);
-        threads[tid]->unblock_thread();
-
+        allThreads[tid]->unblock_thread();
+        readyThreads.push_back(allThreads[tid]);
     }
+
     unblock_signals();
     return 0;
+
 }
 
+int uthread_get_tid()
+{
+    return runningThread->get_id();
+}
 
 int uthread_get_total_quantums()
 {
@@ -431,54 +406,13 @@ int uthread_get_total_quantums()
 
 int uthread_get_quantums(int tid)
 {
-    if(!threads[tid] )
-    {
-        std::cerr<<THREAD_DOES_NOT_EXIST_MSG<<std::endl;
-        return -1;
-    }
-    return threads[tid]->get_quantums();
-}
-
-int uthread_mutex_lock()
-{
     block_signals();
-    if(mutex)
+    if(tid >= MAX_THREAD_NUM || allThreads[tid] == nullptr)
     {
-        mutex = false;
-        locking_thread = runningThread;
-    }
-    else
-    {
-        if(locking_thread == runningThread)
-        {
-            unblock_signals();
-            return -1;
-        }
-        mutex_blocked.push(runningThread);
-        runningThread->need_mutex();
-        uthread_block(runningThread->get_id());
-    }
-
-    unblock_signals();
-    return 0;
-}
-
-int uthread_mutex_unlock()
-{
-
-    block_signals();
-    if(mutex)
-    {
+        fprintf(stderr, THREAD_DOES_NOT_EXIST_MSG);
         unblock_signals();
         return -1;
     }
-
-    mutex = true;
-    runningThread->release_mutex();
-    Thread* unblock_thread = mutex_blocked.front();
-    unblock_thread->unblock_thread();
-    mutex_blocked.pop();
     unblock_signals();
-    return 0;
+    return allThreads[tid]->get_quantums();
 }
-
