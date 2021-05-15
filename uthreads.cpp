@@ -560,7 +560,7 @@ int uthread_mutex_lock()
     runningThread->wait_mutix();
     uthread_block(runningThread->get_id());
     unblock_signals();
-    return -1;
+    return 0;
 }
 
 int uthread_mutex_unlock()
@@ -573,8 +573,15 @@ int uthread_mutex_unlock()
         return -1;
     }
 
+    if(mutixLocker != runningThread)
+    {
+        unblock_signals();
+        return -1;
+    }
+
     mutixIsAvailable = true;
-    if(!blockedByMutixThreads.empty())
+    mutixLocker = nullptr;
+    while(!blockedByMutixThreads.empty())
     {
         Thread* th = blockedByMutixThreads.front();
         blockedByMutixThreads.pop_front();
