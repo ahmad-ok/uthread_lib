@@ -434,6 +434,10 @@ int uthread_terminate(int tid)
 
         //Note: The Thread will be Removed From Ready Threads in Switch
         // free The Thread and switch Threads
+        if(mutixLocker == runningThread)
+        {
+            uthread_mutex_unlock();
+        }
         --threadsNum;
         allThreads[tid] = nullptr;
         delete runningThread;
@@ -454,6 +458,14 @@ int uthread_terminate(int tid)
     unblock_signals();
     return 0;
 }
+
+/**
+ * blocks the running thread if it asks for mutix while
+ * mutix is locked
+ * seperated from normal block as we might want to block
+ * the initital state here
+ */
+
 
 int uthread_block(int tid)
 {
@@ -558,7 +570,7 @@ int uthread_mutex_lock()
     //todo Check what should happen when tthread is locked from mutix then blocked by user using uthread_block
     blockedByMutixThreads.push_back(runningThread);
     runningThread->wait_mutix();
-    uthread_block(runningThread->get_id());
+    switchThreads(false, true);
     unblock_signals();
     return 0;
 }
